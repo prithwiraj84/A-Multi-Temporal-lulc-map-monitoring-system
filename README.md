@@ -1,203 +1,187 @@
-# 🌍 Multi-Temporal LULC Classification & Change Analysis App (Google Earth Engine)
+# 🌍 Multi-Temporal Land Use / Land Cover (LULC) Classification App
 
-A complete **Google Earth Engine (GEE) interactive application** for **multi-temporal Land Use / Land Cover (LULC)** mapping, change detection, trend analysis, pixel inspection, and exporting results using **machine learning classifiers**.
+A **powerful, interactive Google Earth Engine (GEE) application** for **multi-temporal Land Use / Land Cover (LULC) analysis**, combining **machine learning, satellite imagery, change detection, and advanced visual analytics** in a single unified interface.
 
----
-
-## ✨ Features
-
-* Multi-year LULC classification (1995–2025)
-* Supports **Landsat 5, 7, 8** and **Sentinel-2**
-* Cloud masking & surface reflectance processing
-* Spectral indices generation:
-
-  * NDVI
-  * EVI
-  * NDBI
-  * MNDWI
-  * BSI
-  * UI
-* Machine Learning Classifiers:
-
-  * Random Forest
-  * Support Vector Machine (SVM)
-  * CART
-* Accuracy assessment:
-
-  * Confusion Matrix
-  * Overall Accuracy
-  * Kappa Coefficient
-* Interactive UI Panels
-* LULC export (Raster, Vector & Video)
+This project enables users to **train custom classifiers**, analyze **long-term land dynamics**, perform **change detection**, generate **trend & advanced charts**, inspect **pixel-level indices**, and **export results** — all directly inside the Earth Engine Code Editor.
 
 ---
 
-## 🧭 LULC Classes
+## ✨ Key Features
 
-| Class ID | Class Name  |
-| -------- | ----------- |
-| 1        | Vegetation  |
-| 2        | Water       |
-| 3        | Urban Area  |
-| 4        | Cultivation |
-| 5        | Sand        |
-| 6        | Bare Land   |
+### 🧠 Machine Learning–Based Classification
 
----
+* Supports **Random Forest**, **SVM**, and **CART** classifiers
+* Trains on **user-provided ground truth samples**
+* Uses **multi-sensor data fusion** (Landsat 5, 7, 8 & Sentinel‑2)
+* Automatically computes spectral indices:
 
-## 🎨 Color Palette
+  * NDVI, EVI, NDBI, MNDWI, BSI, UI
 
-```js
-['0db21f', '1cece0', 'ff0000', '00ff00', 'f0f015', '979a5d']
-```
+### ⏳ Multi‑Temporal Analysis
 
----
+* Classifies LULC across multiple years (1995–2025)
+* Generates consistent, comparable LULC maps for each year
+* Handles data gaps and cloud masking automatically
 
-## 📅 Temporal Coverage
+### 🔄 Change Detection
 
-```text
-1995, 2000, 2005, 2010, 2015, 2020, 2023, 2025
-```
+* Quantifies **class-wise area change** between any two years
+* Identifies **major land-use transitions**
+* Computes net gain/loss (in hectares)
 
-* Seasonal composite: **October – March**
+### 📈 Advanced Visual Analytics
 
----
+* Time‑series trend charts (LULC area vs year)
+* Stacked area charts for land composition
+* Change matrices (top transitions)
+* NDVI distribution by LULC class
+* Classification confidence & net change charts
 
-## 🛰 Data Sources
+### 🗺️ Interactive Map Tools
 
-* Landsat 5 TM – `LANDSAT/LT05/C02/T1_L2`
-* Landsat 7 ETM+ – `LANDSAT/LE07/C02/T1_L2`
-* Landsat 8 OLI – `LANDSAT/LC08/C02/T1_L2`
-* Sentinel‑2 MSI – `COPERNICUS/S2_SR_HARMONIZED`
+* Pixel-level **LULC + spectral index inspector**
+* Dynamic legends and statistics panel
+* Click‑based spatial exploration
 
----
+### 📤 Export Capabilities
 
-## 🧠 Classification Workflow
-
-1. Import training datasets
-2. Select classifier
-3. Train model using reference year (2023)
-4. Apply trained model to all years
-5. Generate LULC maps
-6. Perform statistics, trend & change analysis
+* Export LULC rasters (GeoTIFF)
+* Export individual classes as **Shapefiles**
+* Generate **time‑lapse animation videos (GIF/MP4)**
 
 ---
 
-## 🖥 Application Panels
+## 🛰️ Data Sources
 
-### 1. Configure & Train Model
+| Sensor           | Usage Period   |
+| ---------------- | -------------- |
+| Landsat 5 (TM)   | 1995 – 2011    |
+| Landsat 7 (ETM+) | 1999 – 2013    |
+| Landsat 8 (OLI)  | 2013 – Present |
+| Sentinel‑2 (SR)  | 2017 – Present |
 
-* Select ML classifier
-* Train model
-* View accuracy metrics
-
-### 2. Time‑Series Explorer
-
-* Select year
-* Display LULC map
-* Area statistics (hectares)
-
-### 3. Change Detection
-
-* Compare two years
-* Area difference report
-* Change map visualization
-
-### 4. Trend Analysis
-
-* Area trend chart (Year vs Area)
-* Class‑wise temporal trends
-
-### 5. Inspector & Export
-
-* Pixel‑level inspection
-* Export tools
+All imagery is **surface reflectance**, cloud‑masked, scaled, and harmonized.
 
 ---
 
-## 📤 Export Options
+## 🧪 Spectral Indices Used
 
-| Export Type  | Format          |
-| ------------ | --------------- |
-| LULC Raster  | GeoTIFF         |
-| Class Vector | Shapefile       |
-| Time Series  | Video (MP4/GIF) |
+* **NDVI** – Vegetation health
+* **EVI** – Enhanced vegetation signal
+* **NDBI** – Built‑up detection
+* **MNDWI** – Water bodies
+* **BSI** – Bare soil
+* **UI** – Urban intensity
 
-Exports are saved to **Google Drive**.
-
----
-
-## 📥 Required User Imports
-
-Before running the script, import the following assets:
-
-```text
-aoi
-water
-cultivations
-vegetations
-Urban_area
-sand
-bare
-```
-
-Each training dataset must include:
-
-```text
-class (integer)
-```
+These indices significantly improve class separability.
 
 ---
 
-## ▶ How to Run
+## 🧩 LULC Classes
 
-1. Open **Google Earth Engine Code Editor**
-2. Paste the script
-3. Import all required assets
-4. Click **Run**
-5. Press **Train Model**
-6. Explore results & export data
-
----
-
-## 📊 Outputs
-
-* LULC classified maps
-* Area statistics (ha)
-* Change detection report
-* Time‑series trend chart
-* Exportable GIS files
+| Class Value | Class Name  |
+| ----------- | ----------- |
+| 1           | Vegetation  |
+| 2           | Water       |
+| 3           | Urban Area  |
+| 4           | Cultivation |
+| 5           | Sand        |
+| 6           | Bare Land   |
 
 ---
 
-## ⚠ Notes
+## 🚀 How to Use
 
-* First execution may take several minutes
-* Trend analysis is processed year‑wise
-* Large AOIs may require higher tileScale
+### 1️⃣ Import Required Assets
+
+Import the following FeatureCollections into GEE:
+
+* `aoi`
+* `water`
+* `cultivations`
+* `vegetations`
+* `Urban_area`
+* `sand`
+* `bare`
+
+Each training dataset must contain a `class` property.
+
+### 2️⃣ Run the Script
+
+* Paste the full script into **Google Earth Engine Code Editor**
+* Click **Run**
+
+### 3️⃣ Train the Model
+
+* Open **Panel 1**
+* Select classifier
+* Click **Train Model**
+
+### 4️⃣ Explore Results
+
+* View classified maps by year
+* Analyze statistics, trends & changes
+* Inspect pixel‑level indices
+
+### 5️⃣ Export Outputs
+
+* Download rasters, vectors, or animations via **Panel 6**
 
 ---
 
-## 👨‍💻 Author
+## 🖥️ Application Structure
 
-**Prithwiraj Das**
-B.Tech CSE Student
-Remote Sensing & Geospatial Analysis (GEE)
+* **Panel 1** – Model configuration & training
+* **Panel 2** – Year-wise LULC explorer
+* **Panel 3** – Change detection
+* **Panel 4** – Trend analysis
+* **Panel 5** – Advanced charts
+* **Panel 6** – Inspector & export tools
+
+---
+
+## 📊 Accuracy Assessment
+
+* Automatic **train/test split (80/20)**
+* Confusion matrix visualization
+* Overall accuracy & Kappa coefficient
+
+Ensures reliable and interpretable classification results.
+
+---
+
+## ⚙️ Technical Highlights
+
+* Cloud masking (QA_PIXEL, QA60)
+* Sensor‑independent band harmonization
+* Tile‑scaled reducers for large AOIs
+* Robust handling of missing imagery
+
+---
+
+## 🧑‍💻 Ideal For
+
+* Remote sensing research
+* Urban growth analysis
+* Environmental monitoring
+* Academic projects & theses
+* Government & planning studies
+
+---
+
+## 📌 Future Enhancements
+
+* Deep learning classifiers
+* Accuracy per class visualization
+* Time‑aware change trajectory analysis
+* Web deployment (GEE Apps / App Engine)
 
 ---
 
 ## 📜 License
 
-This project is intended for **academic, educational, and research purposes**.
+This project is released for **academic and research use**. Feel free to modify and extend with proper attribution.
 
 ---
 
-## 🙏 Acknowledgements
-
-* Google Earth Engine Team
-* USGS Landsat Program
-* Copernicus Sentinel‑2 Mission
-
----
-
-✅ *Ready for academic projects, research work, and geospatial analysis.*
+### ⭐ If you find this project useful, consider starring or citing it in your research!
