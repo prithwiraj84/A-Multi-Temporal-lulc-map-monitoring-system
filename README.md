@@ -267,8 +267,28 @@ You can update this section if you use a different license.
 
 <img src="https://img.shields.io/badge/Built%20for-Reproducible%20Geospatial%20Analysis-1B5E20?style=for-the-badge&labelColor=0a2e1a" />
 
+
+
 <br/><br/>
 
 **Built for reproducible geospatial analysis and decision-support planning.**
 **BY Prithwiraj Das**
+
+
+
+
+
+
+<p align="center">
+
+<a href="https://youtube.com/@official_coding_concepts">
+<img src="https://img.shields.io/badge/YouTube-red?style=for-the-badge&logo=youtube&logoColor=white"/>
+</a>
+
+<a href="https://github.com/prithwiraj84">
+<img src="https://img.shields.io/badge/GitHub-black?style=for-the-badge&logo=github&logoColor=white"/>
+</a>
+
+</p>
+
 </div>
