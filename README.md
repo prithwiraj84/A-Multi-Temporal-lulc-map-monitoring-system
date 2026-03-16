@@ -122,8 +122,7 @@ Export & Reporting (SHP · GeoTIFF · MP4)
 
 ```
 GEE project/
-├── gee.js        # Main / alternate app script
-├── low_acc.js    # Full-featured script (training, charts, CA-Markov forecasting)
+├── Lulc.js        # Main 
 └── README.md     # This file
 ```
 
@@ -164,7 +163,7 @@ bare          // Training samples – Bare Land   (class: 6)
 
 **Step 1** — Open the [Google Earth Engine Code Editor](https://code.earthengine.google.com)
 
-**Step 2** — Paste content from `low_acc.js` (or `gee.js` if preferred)
+**Step 2** — Paste content from `LULC.js`
 
 **Step 3** — Import your AOI and all class training assets in the **left panel**
 
@@ -271,5 +270,5 @@ You can update this section if you use a different license.
 <br/><br/>
 
 **Built for reproducible geospatial analysis and decision-support planning.**
-
+**BY Prithwiraj Das**
 </div>
