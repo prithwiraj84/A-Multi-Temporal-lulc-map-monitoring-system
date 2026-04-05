@@ -6,6 +6,11 @@ var referenceYear = 2023;
 var names = ['Vegetation', 'Water', 'Urban Area', 'Cultivation', 'Sand', 'Bare'];
 var palette = ['0db21f', '1cece0', 'ff0000', '00ff00', 'f0f015', '979a5d'];
 
+// MODIS datasets for environmental monitoring
+var MODIS_NDVI = ee.ImageCollection('MODIS/061/MOD13Q1');
+var MODIS_LST = ee.ImageCollection('MODIS/061/MOD11A2');
+var MODIS_FIRE = ee.ImageCollection('MODIS/061/MOD14A1');
+
 // Image processing functions
 function processLandsat5(col) {
   return col
@@ -33,6 +38,19 @@ function processSentinel2(col) {
     .select(['B2','B3','B4','B8','B11','B12'],
             ['Blue','Green','Red','NIR','SWIR1','SWIR2'])
     .map(function(img){ return img.divide(10000).clamp(0,1).copyProperties(img,['system:time_start']); });
+}
+
+function getMODISData(startYear, endYear) {
+  var start = ee.Date.fromYMD(startYear, 1, 1);
+  var end = ee.Date.fromYMD(endYear, 12, 31);
+
+  return MODIS_NDVI
+    .filterDate(start, end)
+    .filterBounds(aoi)
+    .select(['NDVI', 'EVI'])
+    .map(function(img) {
+      return img.multiply(0.0001).copyProperties(img, ['system:time_start']);
+    });
 }
 
 function maskLandsatSR(image) {
@@ -155,7 +173,7 @@ ui.root.add(ui.SplitPanel(mainPanel, mapPanel));
 var panel_1_title = ui.Label('1. Configure & Train Model', {fontWeight:'bold', fontSize:'16px', margin:'5px 0', color:'#34495e'});
 var panel_1_content = ui.Panel(null, null, {stretch:'vertical'});
 
-var classifierSelect = ui.Select({ items:['Random Forest','SVM','CART'], value:'Random Forest', style:{margin:'5px 10px'} });
+var classifierSelect = ui.Select({ items:['Random Forest','SVM','CART','Gradient Tree Boost'], value:'Random Forest', style:{margin:'5px 10px'} });
 var trainButton = ui.Button('Train Model', trainModel, false, {width:'90%', margin:'5px auto', backgroundColor:'#27ae60', color:'white'});
 var modelStatus = ui.Label('Model not trained.', {margin:'5px 10px'});
 var accuracyPanel = ui.Panel(null, null, {margin:'5px 10px'});
@@ -341,6 +359,31 @@ accordion.add(ui.Panel([panel_7_title, panel_7_content], ui.Panel.Layout.flow('v
   backgroundColor:'#ecf0f1', padding:'8px', border:'1px solid #bdc3c7', margin:'5px 0'
 }));
 
+// Panel 8: Environmental Monitoring (MODIS)
+var panel_8_title = ui.Label('8. MODIS Environmental Monitoring', {fontWeight:'bold', fontSize:'16px', margin:'5px 0', color:'#34495e'});
+var panel_8_content = ui.Panel();
+
+var modisTrendButton = ui.Button('Generate NDVI Trend', generateMODISTrend, false, {width:'90%', margin:'5px auto'});
+var ndviAnomalyButton = ui.Button('Show NDVI Anomaly', generateNDVIAnomaly, false, {width:'90%', margin:'5px auto'});
+var droughtButton = ui.Button('Show Drought Areas', showDroughtAreas, false, {width:'90%', margin:'5px auto'});
+var seasonalButton = ui.Button('Seasonal NDVI Chart', seasonalNDVI, false, {width:'90%', margin:'5px auto'});
+var lstButton = ui.Button('Show Land Surface Temperature', showLST, false, {width:'90%', margin:'5px auto'});
+var fireButton = ui.Button('Show Active Fires', showFires, false, {width:'90%', margin:'5px auto'});
+var exportModisButton = ui.Button('Export NDVI Anomaly (GeoTIFF)', exportNDVIAnomaly, false, {width:'90%', margin:'5px auto'});
+
+panel_8_content.add(ui.Label('Environmental Layers & Trends', {fontWeight:'bold', margin:'5px 10px'}));
+panel_8_content.add(modisTrendButton);
+panel_8_content.add(ndviAnomalyButton);
+panel_8_content.add(droughtButton);
+panel_8_content.add(seasonalButton);
+panel_8_content.add(lstButton);
+panel_8_content.add(fireButton);
+panel_8_content.add(exportModisButton);
+
+accordion.add(ui.Panel([panel_8_title, panel_8_content], ui.Panel.Layout.flow('vertical'), {
+  backgroundColor:'#ecf0f1', padding:'8px', border:'1px solid #bdc3c7', margin:'5px 0'
+}));
+
 // Core Functions
 function trainModel() {
   modelStatus.setValue('Training... This may take a minute.');
@@ -376,6 +419,10 @@ function trainModel() {
     appState.model = ee.Classifier.smileCart().train({
       features:trainSample, classProperty:'class', inputProperties:appState.bandNames
     });
+  } else if (classifierType === 'Gradient Tree Boost') {
+    appState.model = ee.Classifier.smileGradientTreeBoost(100).train({
+      features:trainSample, classProperty:'class', inputProperties:appState.bandNames
+    });
   } else {
     appState.model = ee.Classifier.smileRandomForest({ numberOfTrees:100, seed:42 }).train({
       features:trainSample, classProperty:'class', inputProperties:appState.bandNames
@@ -408,19 +455,84 @@ function calculateAccuracy() {
   });
 
   var testClassified = testSample.classify(appState.model);
-  var cm = testClassified.errorMatrix('class', 'classification');
+  var orderedClasses = ee.List.sequence(1, names.length);
+  var cm = testClassified.errorMatrix('class', 'classification', orderedClasses);
 
   cm.accuracy().evaluate(function(acc) {
     cm.kappa().evaluate(function(kappa) {
-      accuracyPanel.clear();
-      accuracyPanel.add(ui.Label('Model Accuracy (on ' + referenceYear + ' data):', {fontWeight:'bold'}));
-      accuracyPanel.add(ui.Label('Overall Accuracy: ' + (acc*100).toFixed(2) + '%'));
-      accuracyPanel.add(ui.Label('Kappa: ' + kappa.toFixed(3)));
-      var cmNames = ['Unclassified'].concat(names);
-      var cmChart = ui.Chart.array.values(cm.array(), 0, cmNames)
-        .setSeriesNames(cmNames)
-        .setOptions({ title:'Confusion Matrix', hAxis:{title:'Predicted'}, vAxis:{title:'Actual'} });
-      accuracyPanel.add(cmChart);
+      cm.array().evaluate(function(cmArray) {
+          accuracyPanel.clear();
+          accuracyPanel.add(ui.Label('Model Accuracy (on ' + referenceYear + ' data):', {fontWeight:'bold'}));
+
+          var validAcc = (acc !== null && !isNaN(acc));
+          var validKappa = (kappa !== null && !isNaN(kappa));
+          accuracyPanel.add(ui.Label('Overall Accuracy: ' + (validAcc ? (acc * 100).toFixed(2) + '%' : 'N/A')));
+          accuracyPanel.add(ui.Label('Kappa: ' + (validKappa ? Number(kappa).toFixed(3) : 'N/A')));
+
+          var matrix = Array.isArray(cmArray) ? cmArray : [];
+          if (!Array.isArray(matrix) || matrix.length === 0) {
+            accuracyPanel.add(ui.Label('Unable to compute per-class metrics (empty confusion matrix).'));
+            var cmNamesEmpty = names.slice();
+            var cmChartEmpty = ui.Chart.array.values(cm.array(), 0, cmNamesEmpty)
+              .setSeriesNames(cmNamesEmpty)
+              .setOptions({ title:'Confusion Matrix', hAxis:{title:'Predicted'}, vAxis:{title:'Actual'} });
+            accuracyPanel.add(cmChartEmpty);
+            return;
+          }
+
+          var macroPrecisionSum = 0;
+          var macroRecallSum = 0;
+          var macroF1Sum = 0;
+          var classCount = names.length;
+
+          accuracyPanel.add(ui.Label('Per-Class Metrics:', {fontWeight:'bold', margin:'8px 0 4px 0'}));
+          names.forEach(function(className, idx) {
+            var row = Array.isArray(matrix[idx]) ? matrix[idx] : [];
+            var tp = Number(row[idx] || 0);
+
+            var rowSum = 0;
+            var colSum = 0;
+            for (var j = 0; j < classCount; j++) {
+              var rowVal = (Array.isArray(matrix[idx]) ? Number(matrix[idx][j] || 0) : 0);
+              var colVal = (Array.isArray(matrix[j]) ? Number(matrix[j][idx] || 0) : 0);
+              rowSum += rowVal;
+              colSum += colVal;
+            }
+
+            var precisionVal = colSum > 0 ? tp / colSum : 0;
+            var recallVal = rowSum > 0 ? tp / rowSum : 0;
+            var f1Val = (precisionVal + recallVal) > 0
+              ? (2 * precisionVal * recallVal) / (precisionVal + recallVal)
+              : 0;
+
+            macroPrecisionSum += precisionVal;
+            macroRecallSum += recallVal;
+            macroF1Sum += f1Val;
+
+            accuracyPanel.add(ui.Label(
+              className + ' | Precision: ' + (precisionVal * 100).toFixed(2) + '%'
+              + ' | Recall: ' + (recallVal * 100).toFixed(2) + '%'
+              + ' | F1: ' + f1Val.toFixed(3)
+              + ' | User Acc: ' + (precisionVal * 100).toFixed(2) + '%'
+              + ' | Producer Acc: ' + (recallVal * 100).toFixed(2) + '%'
+            ));
+          });
+
+          var denom = classCount > 0 ? classCount : 1;
+          var macroPrecision = macroPrecisionSum / denom;
+          var macroRecall = macroRecallSum / denom;
+          var macroF1 = macroF1Sum / denom;
+
+          accuracyPanel.add(ui.Label('Macro Precision: ' + (macroPrecision * 100).toFixed(2) + '%', {fontWeight:'bold', margin:'8px 0 0 0'}));
+          accuracyPanel.add(ui.Label('Macro Recall: ' + (macroRecall * 100).toFixed(2) + '%', {fontWeight:'bold'}));
+          accuracyPanel.add(ui.Label('Macro F1 Score: ' + macroF1.toFixed(3), {fontWeight:'bold'}));
+
+          var cmNames = names.slice();
+          var cmChart = ui.Chart.array.values(cm.array(), 0, cmNames)
+            .setSeriesNames(cmNames)
+            .setOptions({ title:'Confusion Matrix', hAxis:{title:'Predicted'}, vAxis:{title:'Actual'} });
+          accuracyPanel.add(cmChart);
+      });
     });
   });
 }
@@ -1002,6 +1114,127 @@ function generateSelectedChart() {
   }
 }
 
+function generateMODISTrend() {
+  chartPanel.clear();
+  chartPanel.add(ui.Label('Generating MODIS NDVI trend...'));
+
+  var modis = getMODISData(2000, 2025);
+  var chart = ui.Chart.image.series({
+    imageCollection: modis.select('NDVI'),
+    region: aoi,
+    reducer: ee.Reducer.mean(),
+    scale: 250
+  }).setOptions({
+    title: 'Vegetation Trend (MODIS NDVI)',
+    hAxis: {title: 'Year'},
+    vAxis: {title: 'NDVI'}
+  });
+
+  chartPanel.clear();
+  chartPanel.add(chart);
+}
+
+function getNDVIAnomalyImage() {
+  var baseline = MODIS_NDVI
+    .filterDate('2000-01-01', '2015-12-31')
+    .filterBounds(aoi)
+    .select('NDVI')
+    .map(function(img) { return img.multiply(0.0001); })
+    .mean();
+
+  var current = MODIS_NDVI
+    .filterDate('2023-01-01', '2024-12-31')
+    .filterBounds(aoi)
+    .select('NDVI')
+    .map(function(img) { return img.multiply(0.0001); })
+    .mean();
+
+  return current.subtract(baseline).rename('NDVI_Anomaly').clip(aoi);
+}
+
+function generateNDVIAnomaly() {
+  var anomaly = getNDVIAnomalyImage();
+  mapPanel.addLayer(anomaly, {
+    min: -0.2,
+    max: 0.2,
+    palette: ['red', 'white', 'green']
+  }, 'NDVI Anomaly', false);
+}
+
+function showDroughtAreas() {
+  var anomaly = getNDVIAnomalyImage();
+  var drought = anomaly.lt(-0.1).selfMask().rename('Drought');
+  mapPanel.addLayer(drought, {palette: ['brown']}, 'Drought Areas', false);
+}
+
+function showLST() {
+  var lst = MODIS_LST
+    .filterDate('2024-01-01', '2024-12-31')
+    .filterBounds(aoi)
+    .select('LST_Day_1km')
+    .mean()
+    .multiply(0.02)
+    .subtract(273.15)
+    .clip(aoi);
+
+  mapPanel.addLayer(lst, {
+    min: 15,
+    max: 45,
+    palette: ['blue', 'green', 'yellow', 'red']
+  }, 'Land Surface Temperature', false);
+}
+
+function showFires() {
+  var fires = MODIS_FIRE
+    .filterDate('2024-01-01', '2024-12-31')
+    .filterBounds(aoi)
+    .select('FireMask');
+
+  mapPanel.addLayer(fires.mean().clip(aoi), {
+    min: 0,
+    max: 9,
+    palette: ['black', 'orange', 'red']
+  }, 'Active Fires', false);
+}
+
+function seasonalNDVI() {
+  var modis = MODIS_NDVI
+    .filterDate('2023-01-01', '2023-12-31')
+    .filterBounds(aoi)
+    .select('NDVI')
+    .map(function(img) {
+      return img.multiply(0.0001).copyProperties(img, ['system:time_start']);
+    });
+
+  var chart = ui.Chart.image.series({
+    imageCollection: modis,
+    region: aoi,
+    reducer: ee.Reducer.mean(),
+    scale: 250
+  }).setOptions({
+    title: 'Seasonal NDVI Cycle',
+    hAxis: {title: 'Date'},
+    vAxis: {title: 'NDVI'}
+  });
+
+  chartPanel.clear();
+  chartPanel.add(chart);
+}
+
+function exportNDVIAnomaly() {
+  var anomaly = getNDVIAnomalyImage();
+  Export.image.toDrive({
+    image: anomaly,
+    description: 'MODIS_NDVI_Anomaly',
+    folder: 'LULC_TimeSeries',
+    region: aoi,
+    scale: 250,
+    crs: 'EPSG:4326',
+    maxPixels: 1e10
+  });
+  print('✅ Export task created for MODIS NDVI anomaly');
+}
+
 chartTypeSelect.onChange(function(value) {
   var valueStr = String(value || '');
   
@@ -1428,3 +1661,6 @@ var methodologyPanel = ui.Panel([
 mainPanel.insert(2, methodologyPanel);
 
 print('🧭 Workflow configured for ERDAS IMAGINE-style LULC prediction.');
+
+
+
