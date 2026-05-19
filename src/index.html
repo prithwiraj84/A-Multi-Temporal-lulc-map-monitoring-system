@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Multi-Temporal LULC | Leaflet + Earth Engine</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+      crossorigin=""
+    />
+
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside id="sidebar">
+        <header class="hero">
+          <p class="eyebrow">Earth Observation Lab</p>
+          <h1>Multi-Temporal LULC</h1>
+          <p class="subtitle">Leaflet + Google Earth Engine standalone application</p>
+        </header>
+
+        <section class="card auth-card">
+          <h2>1. Authentication</h2>
+          <p>
+            Configure your client id in <code>ee-config.js</code>, then authenticate and initialize Earth Engine.
+          </p>
+          <div class="button-row">
+            <button id="authBtn" class="btn btn-primary">Authenticate</button>
+            <button id="initBtn" class="btn btn-secondary" disabled>Initialize EE</button>
+          </div>
+          <p id="authStatus" class="status">Status: Not authenticated</p>
+        </section>
+
+        <section class="card">
+          <h2>2. Map Controls</h2>
+          <label for="basemapSelect">Basemap</label>
+          <select id="basemapSelect">
+            <option value="streets" selected>Streets</option>
+            <option value="satellite">Satellite</option>
+            <option value="terrain">Terrain</option>
+          </select>
+          <div class="layers-toolbar">
+            <span class="layers-title">Layers (GEE-style toggle)</span>
+            <button id="clearLayersBtn" class="btn btn-ghost" type="button">Clear Dynamic</button>
+          </div>
+          <div id="layerToggleList" class="box muted">No analysis layers added yet.</div>
+        </section>
+
+        <section class="card">
+          <h2>3. Model</h2>
+          <label for="classifierSelect">Classifier</label>
+          <select id="classifierSelect">
+            <option value="Random Forest" selected>Random Forest</option>
+            <option value="SVM">SVM</option>
+            <option value="CART">CART</option>
+            <option value="Gradient Tree Boost">Gradient Tree Boost</option>
+          </select>
+          <button id="trainBtn" class="btn btn-primary" disabled>Train Model</button>
+          <p id="modelStatus" class="status">Model not trained</p>
+          <div id="accuracyBox" class="box muted">Accuracy metrics appear here.</div>
+        </section>
+
+        <section class="card">
+          <h2>4. Time-Series Viewer</h2>
+          <label for="yearSelect">Year</label>
+          <select id="yearSelect" disabled></select>
+          <button id="showYearBtn" class="btn btn-secondary" disabled>Show LULC Layer</button>
+          <div id="statsBox" class="box muted">Area by class (ha) appears here.</div>
+        </section>
+
+        <section class="card">
+          <h2>5. Change Detection</h2>
+          <div class="inline-grid">
+            <div>
+              <label for="fromYearSelect">From</label>
+              <select id="fromYearSelect" disabled></select>
+            </div>
+            <div>
+              <label for="toYearSelect">To</label>
+              <select id="toYearSelect" disabled></select>
+            </div>
+          </div>
+          <button id="changeBtn" class="btn btn-secondary" disabled>Run Change Analysis</button>
+          <div id="changeBox" class="box muted">Net class changes appear here.</div>
+        </section>
+
+        <section class="card">
+          <h2>6. Trend Chart (Chart.js)</h2>
+          <button id="trendBtn" class="btn btn-secondary" disabled>Generate Trend Chart</button>
+          <div class="chart-wrap">
+            <canvas id="trendChart"></canvas>
+          </div>
+        </section>
+
+        <section class="card">
+          <h2>7. Advanced Charts</h2>
+          <label for="advancedChartType">Chart Type</label>
+          <select id="advancedChartType">
+            <option value="Stacked Area Chart" selected>Stacked Area Chart</option>
+            <option value="Change Matrix">Change Matrix</option>
+            <option value="Classification Confidence">Classification Confidence</option>
+            <option value="NDVI by LULC Class">NDVI by LULC Class</option>
+            <option value="Net Change Bar Chart">Net Change Bar Chart</option>
+          </select>
+          <div id="advancedRangeRow" class="inline-grid">
+            <div>
+              <label for="advancedYearFrom">From</label>
+              <select id="advancedYearFrom"></select>
+            </div>
+            <div>
+              <label for="advancedYearTo">To</label>
+              <select id="advancedYearTo"></select>
+            </div>
+          </div>
+          <div id="advancedSingleRow">
+            <label for="advancedYearSingle">Year</label>
+            <select id="advancedYearSingle"></select>
+          </div>
+          <button id="advancedChartBtn" class="btn btn-secondary" disabled>Generate Advanced Chart</button>
+          <div class="chart-wrap">
+            <canvas id="advancedChartCanvas"></canvas>
+          </div>
+          <div id="advancedChartSummary" class="box muted">Advanced chart output appears here.</div>
+        </section>
+
+        <section class="card">
+          <h2>8. Future Prediction (2030/2040/2050)</h2>
+          <p id="predictionStatus" class="status">Generate future predictions after training the model.</p>
+          <label for="predictionYearSelect">Prediction Year</label>
+          <select id="predictionYearSelect">
+            <option value="2030" selected>2030</option>
+            <option value="2040">2040</option>
+            <option value="2050">2050</option>
+          </select>
+          <button id="generatePredictionBtn" class="btn btn-secondary" disabled>Generate Predictions</button>
+          <button id="showPredictionBtn" class="btn btn-secondary" disabled>Show Predicted Map</button>
+          <div id="predictionStatsBox" class="box muted">No prediction selected.</div>
+        </section>
+
+        <section class="card">
+          <h2>9. Inspector & Export</h2>
+          <p class="muted">Click on map to inspect class and indices at location.</p>
+          <div id="inspectorBox" class="box muted">Awaiting map click.</div>
+
+          <label for="exportClassSelect">Class to export as vector</label>
+          <select id="exportClassSelect"></select>
+          <button id="exportVectorBtn" class="btn btn-secondary" disabled>Export Class as Vector (SHP)</button>
+          <button id="exportImageBtn" class="btn btn-secondary" disabled>Export Current LULC (GeoTIFF)</button>
+          <button id="exportVideoBtn" class="btn btn-secondary" disabled>Export Time-Lapse (GIF)</button>
+          <div id="exportStatusBox" class="box muted">Export links and status appear here.</div>
+        </section>
+
+        <section class="card">
+          <h2>10. MODIS Environmental Monitoring</h2>
+          <button id="modisTrendBtn" class="btn btn-secondary" disabled>Generate NDVI Trend</button>
+          <button id="ndviAnomalyBtn" class="btn btn-secondary" disabled>Show NDVI Anomaly</button>
+          <button id="droughtBtn" class="btn btn-secondary" disabled>Show Drought Areas</button>
+          <button id="seasonalBtn" class="btn btn-secondary" disabled>Seasonal NDVI Chart</button>
+          <button id="lstBtn" class="btn btn-secondary" disabled>Show Land Surface Temperature</button>
+          <button id="fireBtn" class="btn btn-secondary" disabled>Show Active Fires</button>
+          <button id="exportModisBtn" class="btn btn-secondary" disabled>Export NDVI Anomaly (GeoTIFF)</button>
+          <div class="chart-wrap">
+            <canvas id="modisChartCanvas"></canvas>
+          </div>
+          <div id="modisStatusBox" class="box muted">MODIS analysis output appears here.</div>
+        </section>
+
+        <section class="card legend-card">
+          <h2>Legend</h2>
+          <div id="legend"></div>
+        </section>
+      </aside>
+
+      <main id="mapPane">
+        <div id="map"></div>
+      </main>
+    </div>
+
+    <script
+      src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+      integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+      crossorigin=""
+    ></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/earthengine/0.1.391/earthengine-api.min.js"></script>
+    <script src="./ee-config.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
