@@ -122,8 +122,12 @@ Export & Reporting (SHP · GeoTIFF · MP4)
 
 ```
 GEE project/
-├── Lulc.js        # Main 
-└── README.md     # This file
+├─ index.html        # App shell — loads scripts, map container and UI
+├─ styles.css        # Global styles, CSS variables and animations
+├─ app.js            # Main app logic: auth, map init, UI controls
+├─ ee-config.js      # Local config: OAuth clientId, assets, options
+├─ lulc.js           # Earth Engine script: LULC processing and helpers
+├─ README.md         # this file README (guide & notes)
 ```
 
 ---
