@@ -471,7 +471,7 @@ function calculateAccuracy() {
 
           var matrix = Array.isArray(cmArray) ? cmArray : [];
           if (!Array.isArray(matrix) || matrix.length === 0) {
-            accuracyPanel.add(ui.Label('Unable to compute per-class metrics (empty confusion matrix).'));
+            accuracyPanel.add(ui.Label('Unable to display confusion matrix (empty matrix).'));
             var cmNamesEmpty = names.slice();
             var cmChartEmpty = ui.Chart.array.values(cm.array(), 0, cmNamesEmpty)
               .setSeriesNames(cmNamesEmpty)
@@ -479,53 +479,6 @@ function calculateAccuracy() {
             accuracyPanel.add(cmChartEmpty);
             return;
           }
-
-          var macroPrecisionSum = 0;
-          var macroRecallSum = 0;
-          var macroF1Sum = 0;
-          var classCount = names.length;
-
-          accuracyPanel.add(ui.Label('Per-Class Metrics:', {fontWeight:'bold', margin:'8px 0 4px 0'}));
-          names.forEach(function(className, idx) {
-            var row = Array.isArray(matrix[idx]) ? matrix[idx] : [];
-            var tp = Number(row[idx] || 0);
-
-            var rowSum = 0;
-            var colSum = 0;
-            for (var j = 0; j < classCount; j++) {
-              var rowVal = (Array.isArray(matrix[idx]) ? Number(matrix[idx][j] || 0) : 0);
-              var colVal = (Array.isArray(matrix[j]) ? Number(matrix[j][idx] || 0) : 0);
-              rowSum += rowVal;
-              colSum += colVal;
-            }
-
-            var precisionVal = colSum > 0 ? tp / colSum : 0;
-            var recallVal = rowSum > 0 ? tp / rowSum : 0;
-            var f1Val = (precisionVal + recallVal) > 0
-              ? (2 * precisionVal * recallVal) / (precisionVal + recallVal)
-              : 0;
-
-            macroPrecisionSum += precisionVal;
-            macroRecallSum += recallVal;
-            macroF1Sum += f1Val;
-
-            accuracyPanel.add(ui.Label(
-              className + ' | Precision: ' + (precisionVal * 100).toFixed(2) + '%'
-              + ' | Recall: ' + (recallVal * 100).toFixed(2) + '%'
-              + ' | F1: ' + f1Val.toFixed(3)
-              + ' | User Acc: ' + (precisionVal * 100).toFixed(2) + '%'
-              + ' | Producer Acc: ' + (recallVal * 100).toFixed(2) + '%'
-            ));
-          });
-
-          var denom = classCount > 0 ? classCount : 1;
-          var macroPrecision = macroPrecisionSum / denom;
-          var macroRecall = macroRecallSum / denom;
-          var macroF1 = macroF1Sum / denom;
-
-          accuracyPanel.add(ui.Label('Macro Precision: ' + (macroPrecision * 100).toFixed(2) + '%', {fontWeight:'bold', margin:'8px 0 0 0'}));
-          accuracyPanel.add(ui.Label('Macro Recall: ' + (macroRecall * 100).toFixed(2) + '%', {fontWeight:'bold'}));
-          accuracyPanel.add(ui.Label('Macro F1 Score: ' + macroF1.toFixed(3), {fontWeight:'bold'}));
 
           var cmNames = names.slice();
           var cmChart = ui.Chart.array.values(cm.array(), 0, cmNames)
